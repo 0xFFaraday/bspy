@@ -1,7 +1,11 @@
 import sqlite3
 import os
 from pathlib import Path
+import typer
+from rich.console import Console
+from rich.table import Table
 
+console = Console()
 
 def getNewestFile():
     directory_path = str(Path.home()) + "\\Downloads"
@@ -50,4 +54,4 @@ def main():
     print("Database connection closed...")
 
 if __name__ == "__main__":
-    main()
+    typer.run(main())
