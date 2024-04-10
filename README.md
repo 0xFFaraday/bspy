@@ -1,5 +1,5 @@
 # bspy - Browser Spy
-Uh oh, they got phished again! Name inspired from the wonderful tool [pspy](https://github.com/DominicBreuker/pspy)!
+_Uh oh, they got phished again!_ Name inspired from the wonderful tool [pspy](https://github.com/DominicBreuker/pspy)!
 
 ## Overview
 Provide security researchers or security analysts the ability to provide insight to browser history files in a more accessible manner without the use of a SQLite GUI. At the current stage of this tool, Microsoft Edge and Google Chrome history files have been validated.
