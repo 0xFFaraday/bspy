@@ -44,8 +44,11 @@ def queryDownloads(connection):
 def printOutput(downloads: tuple, minimal: bool):
 
     downloadsTable = None
+    if minimal:
+        downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", Column(no_wrap=False), show_lines=True)
+    else:
+        downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", Column(no_wrap=False), show_lines=True)
     
-
     for download in downloads:
         dataNormalized = {
             "ID": str(download[0]),
@@ -60,10 +63,8 @@ def printOutput(downloads: tuple, minimal: bool):
     }
         
         if minimal:
-            downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", Column(no_wrap=False), show_lines=True)
             downloadsTable.add_row(dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"])
         else:
-            downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", Column(no_wrap=False), show_lines=True)
             downloadsTable.add_row(dataNormalized["ID"], dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"], dataNormalized["Mime_Type"], dataNormalized["Original_Mime_Type"])
 
     if downloadsTable.columns:
