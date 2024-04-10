@@ -41,9 +41,10 @@ def queryDownloads(connection):
 
     return downloads
 
-def printOutput(downloads: tuple):
+def printOutput(downloads: tuple, minimal: bool):
 
-    downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", Column(no_wrap=False), show_lines=True)
+    downloadsTable = None
+    
 
     for download in downloads:
         dataNormalized = {
@@ -57,7 +58,13 @@ def printOutput(downloads: tuple):
             "Mime_Type": str(download[7]),
             "Original_Mime_Type": str(download[8])
     }
-        downloadsTable.add_row(dataNormalized["ID"], dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"], dataNormalized["Mime_Type"], dataNormalized["Original_Mime_Type"])
+        
+        if minimal:
+            downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", Column(no_wrap=False), show_lines=True)
+            downloadsTable.add_row(dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"])
+        else:
+            downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", Column(no_wrap=False), show_lines=True)
+            downloadsTable.add_row(dataNormalized["ID"], dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"], dataNormalized["Mime_Type"], dataNormalized["Original_Mime_Type"])
 
     if downloadsTable.columns:
         console.print(downloadsTable)
@@ -71,7 +78,7 @@ def main():
     console.print(f"Reading file - {databaseHistory}", style="white on blue")
     
     downloads = queryDownloads(cursor)
-    printOutput(downloads)
+    printOutput(downloads, True)
     
     dbCleanup(con)
     console.print("Database connection closed...", style="white on blue")
