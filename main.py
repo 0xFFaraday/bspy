@@ -7,6 +7,17 @@ from rich.table import Table, Column
 
 console = Console()
 
+def printBanner():
+    banner = """
+    ____                                    _____            
+   / __ )_________ _      __________  _____/ ___/____  __  __
+  / __  / ___/ __ \ | /| / / ___/ _ \/ ___/\__ \/ __ \/ / / /
+ / /_/ / /  / /_/ / |/ |/ (__  )  __/ /   ___/ / /_/ / /_/ / 
+/_____/_/   \____/|__/|__/____/\___/_/   /____/ .___/\__, /  
+                                             /_/    /____/ 
+"""
+    print(banner)
+
 def getNewestFile():
     directory_path = str(Path.home()) + "/Downloads"
     most_recent_file = None
@@ -73,6 +84,7 @@ def printOutput(downloads: tuple, minimal: bool):
         console.print("[i]No data...[/i]")
 
 def main():
+    printBanner()
     databaseHistory = getNewestFile()
     
     cursor, con = dbConnection(databaseHistory)
