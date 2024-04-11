@@ -56,9 +56,9 @@ def printOutput(downloads: tuple, minimal: bool):
 
     downloadsTable = None
     if minimal:
-        downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", Column(no_wrap=False), show_lines=True)
+        downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", show_lines=True)
     else:
-        downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", Column(no_wrap=False), show_lines=True)
+        downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", show_lines=True)
     
     for download in downloads:
         dataNormalized = {
