@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from rich.table import Table, Column
+from datetime import datetime
 
 console = Console()
 
@@ -44,54 +45,116 @@ def dbCleanup(con):
     con.close()
 
 
-def queryDownloads(connection):
+def queryBuilder(connection, table, rows):
     # The result of a "cursor.execute" can be iterated over by row
-    downloads = connection.execute("SELECT id, current_path, DATETIME(ROUND(start_time / 1000000-11644473600), 'unixepoch', 'localtime') AS EventTime, referrer, site_url, tab_url, tab_referrer_url, mime_type, original_mime_type FROM downloads;")
-    #columnNames = list(map(lambda x: x[0], connection.description))
-    #print(columnNames)
-
-    return downloads
-
-def printOutput(downloads: tuple, minimal: bool):
-
-    downloadsTable = None
-    if minimal:
-        downloadsTable = Table("File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", show_lines=True)
-    else:
-        downloadsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type", show_lines=True)
     
-    for download in downloads:
-        dataNormalized = {
-            "ID": str(download[0]),
-            "File_Path": str(download[1]),
-            "Date": str(download[2]),
-            "Referrer": str(download[3]),
-            "Site_URL": str(download[4]),
-            "Tab_URL": str(download[5]),
-            "Tab_Referrer_URL": str(download[6]),
-            "Mime_Type": str(download[7]),
-            "Original_Mime_Type": str(download[8])
-    }
+    #queryResults = connection.execute(f"SELECT id, current_path, DATETIME(ROUND(start_time / 1000000-11644473600), 'unixepoch', 'localtime') AS EventTime, referrer, site_url, tab_url, tab_referrer_url, mime_type, original_mime_type FROM {table} LIMIT {rows};")
+    queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
+    columnNames = list(map(lambda x: x[0], connection.description))
+    #print(columnNames)
+    # for result in queryResults:
+    #     print(result)
+    #print(queryResults)
+
+    return {
+        "columnNames": columnNames,
+        "tableName": table,
+        "queryResults": queryResults
+        }
+
+def printOutput(queryResults: dict, minimal: bool):
+
+    resultsTable = None
+    columns = []
+
+    if minimal:
+        if queryResults["tableName"] == "downloads":
+            resultsTable = Table(title="Downloads Table", show_lines=True)
+            columns = ["File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL"]
+        
+        elif queryResults["tableName"] == "urls":
+            resultsTable = Table(title="URLs Table", show_lines=True)
+            columns = ["URL", "Title", "Visit Count", "Typed Count", "Last Visit Time"]
+
+    else:
+        if queryResults["tableName"] == "downloads":
+            resultsTable = Table(title="Downloads Table", show_lines=True)
+        elif queryResults["tableName"] == "urls":
+            resultsTable = Table(title="URLs Table", show_lines=True)
+        
+        columns = queryResults["columnNames"]
+
+        # if queryResults["tableName"] == "downloads":
+        #     resultsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type")
+        # elif queryResults["tableName"] == "urls":
+        #     resultsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type")
+    
+    for column in columns:
+            # create columns
+            resultsTable.add_column(column)
+
+    for result in queryResults["queryResults"]:
+        dataNormalized = None
+        
+        if queryResults["tableName"] == "downloads":
+            dataNormalized = {
+                "ID": str(result[0]),
+                "File_Path": str(result[2]),
+                "Date": str(convertTime(result[4])),
+                "Referrer": str(result[15]),
+                "Site_URL": str(result[16]),
+                "Tab_URL": str(result[18]),
+                "Tab_Referrer_URL": str(result[19])
+            }
+
+        elif queryResults["tableName"] == "urls":
+            dataNormalized = {
+                "URL": str(result[1]),
+                "Title": str(result[2]),
+                "Visit_Count": str(result[3]),
+                "Typed_Count": str(result[4]),
+                "Last_Visit_Time": str(convertTime(result[5]))
+            }
         
         if minimal:
-            downloadsTable.add_row(dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"])
+            if queryResults["tableName"] == "downloads":
+                resultsTable.add_row(dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"])
+            elif queryResults["tableName"] == "urls":
+                resultsTable.add_row(dataNormalized["URL"], dataNormalized["Title"], dataNormalized["Visit_Count"], dataNormalized["Typed_Count"], dataNormalized["Last_Visit_Time"])
         else:
-            downloadsTable.add_row(dataNormalized["ID"], dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"], dataNormalized["Mime_Type"], dataNormalized["Original_Mime_Type"])
+            resultsTable.add_row(result)
 
-    if downloadsTable.columns:
-        console.print(downloadsTable)
+    if resultsTable.rows:
+        console.print(resultsTable)
     else:
-        console.print("[i]No data...[/i]")
+        console.print("[i]No data for table...[/i]")
 
-def main():
+def convertTime(time):
+    seconds = time / 1000000-11644473600
+    converted = datetime.fromtimestamp(seconds)
+    return converted.strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+    
+
+def main(all: bool = False, minimal: bool = True, rows: int = 10):
     printBanner()
     databaseHistory = getNewestFile()
     
     cursor, con = dbConnection(databaseHistory)
     console.print(f"Reading file - {databaseHistory}", style="white on blue")
     
-    downloads = queryDownloads(cursor)
-    printOutput(downloads, True)
+    queryResults = None
+
+    tables = ["downloads", "urls"]
+
+    if all:
+        for table in tables:
+            queryResults = queryBuilder(cursor, table, rows)
+            printOutput(queryResults, minimal)
+    else:
+        queryResults = queryBuilder(cursor, tables[0], rows)
+        printOutput(queryResults, minimal)
+
     
     dbCleanup(con)
     console.print("Database connection closed...", style="white on blue")
