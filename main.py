@@ -104,8 +104,8 @@ def printOutput(queryResults: dict, minimal: bool):
                 "Date": str(convertTime(result[4])),
                 "Referrer": str(result[15]),
                 "Site_URL": str(result[16]),
-                "Tab_URL": str(result[18]),
-                "Tab_Referrer_URL": str(result[19])
+                "Tab_URL": str(result[17]),
+                "Tab_Referrer_URL": str(result[18])
             }
 
         elif queryResults["tableName"] == "urls":
