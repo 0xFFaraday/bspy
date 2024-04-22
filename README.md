@@ -11,7 +11,14 @@ Before running, ensure you have a browser history SQLite file within your Downlo
 git clone https://github.com/0xFFaraday/bspy.git
 cd bspy && pip install -r requirements.txt
 
-python ./main.py
+# Help Usage
+python ./main.py --help
+
+# Example 1 - Pull both URLs and the downloads tables
+python ./main.py --all
+
+# Example 2 - Pull downloads table and limit output
+python ./main.py --rows 5
 ```
 
 ## Features
