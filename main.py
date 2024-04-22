@@ -122,7 +122,8 @@ def printOutput(queryResults: dict, minimal: bool):
             elif queryResults["tableName"] == "urls":
                 resultsTable.add_row(dataNormalized["URL"], dataNormalized["Title"], dataNormalized["Visit_Count"], dataNormalized["Typed_Count"], dataNormalized["Last_Visit_Time"])
         else:
-            resultsTable.add_row(result)
+            #tuple unpack
+            resultsTable.add_row(*[str(item) for item in result])
 
     if resultsTable.rows:
         console.print(resultsTable)
