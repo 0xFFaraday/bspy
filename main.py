@@ -2,6 +2,7 @@ import sqlite3
 import os
 from pathlib import Path
 import typer
+from typing_extensions import Annotated
 from rich.console import Console
 from rich.table import Table, Column
 from datetime import datetime
@@ -138,7 +139,13 @@ def convertTime(time):
 
     
 
-def main(all: bool = False, minimal: bool = True, rows: int = 10):
+def main(
+    all: Annotated[bool, typer.Option("--all", "-a", help="Show both URL and Download tables")] = False,
+    minimal: Annotated[bool, typer.Option("--minimal", "-min", help="Limit number of columns for cleaner visuals")] = True,
+    rows: Annotated[int, typer.Option("--rows", "-r", min = 0, max=50, help="Limit number of rows that each table generates")] = 10,
+    output: Annotated[bool, typer.Option("--output", "-o", help="Output table contents to a CSV (not implemented)")] = False,
+    ):
+    
     printBanner()
     databaseHistory = getNewestFile()
     
