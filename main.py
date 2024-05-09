@@ -53,7 +53,7 @@ def queryBuilder(connection, table, rows: int, verbose: bool):
         if table == "urls":
             queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
         elif table == "downloads":
-            queryResults = connection.execute(f"SELECT id, current_path, start_time, referrer, site_url, tab_url, tab_referrer_url FROM {table} LIMIT {rows};")
+            queryResults = connection.execute(f"SELECT id, current_path, start_time, referrer, site_url, tab_url, tab_referrer_url FROM(SELECT id, current_path, start_time, referrer, site_url, tab_url, tab_referrer_url FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
     else:
         queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
         
@@ -118,7 +118,7 @@ def convertTime(time):
     return converted.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
 def write_to_csv(filename, columns, data):
-    with open(filename, 'w', newline='') as csvfile:
+    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(columns)
         writer.writerows(data)
