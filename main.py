@@ -49,10 +49,6 @@ def dbCleanup(con):
 
 
 def queryBuilder(connection, table, rows: int, verbose: bool):
-    # The result of a "cursor.execute" can be iterated over by row
-    
-    #queryResults = connection.execute(f"SELECT id, current_path, DATETIME(ROUND(start_time / 1000000-11644473600), 'unixepoch', 'localtime') AS EventTime, referrer, site_url, tab_url, tab_referrer_url, mime_type, original_mime_type FROM {table} LIMIT {rows};")
-    
     if not verbose:
         if table == "urls":
             queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
@@ -61,13 +57,9 @@ def queryBuilder(connection, table, rows: int, verbose: bool):
     else:
         queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
         
+    # iterate through table's column names
     columnNames = list(map(lambda x: x[0], connection.description))
     
-    #print(columnNames)
-    # for result in queryResults:
-    #     print(result)
-    #print(queryResults)
-
     return {
         "columnNames": columnNames,
         "tableName": table,
@@ -80,7 +72,7 @@ def printOutput(queryResults: dict, output: bool):
     columns = queryResults["columnNames"]
     timeColumns = []
 
-    # parse all columns that have time within in
+    # parse all columns that have time within it
     for col in columns:
         if "time" in col:
             timeColumns.append(columns.index(col))
@@ -95,6 +87,8 @@ def printOutput(queryResults: dict, output: bool):
             # create columns
             resultsTable.add_column(column)
 
+    normalizedResults = []
+
     for result in queryResults["queryResults"]:
 
         # convert time to human format, temp way to do it
@@ -103,17 +97,20 @@ def printOutput(queryResults: dict, output: bool):
             tmpList[timeCol] = str(convertTime(result[timeCol]))
 
         result = tuple(tmpList)
-        #tuple unpack
+        normalizedResults.append(result)
+        
+        #tuple unpack - creates column data
         resultsTable.add_row(*[str(item) for item in result])
 
     if resultsTable.rows:
         console.print(resultsTable)
     else:
-        console.print("[i]No data for table...[/i]")
+        console.print(f"[i]No data for " + queryResults["tableName"] + " table...[/i]")
 
+    #will fix later, currently works
     if output:
-        write_to_csv(queryResults["tableName"] + ".csv", queryResults["columnNames"], queryResults["queryResults"])
-        console.print("[i]"+ "Created CSV File:  " +queryResults["tableName"] + ".csv" + "[/i]")
+        write_to_csv(queryResults["tableName"] + ".csv", queryResults["columnNames"], normalizedResults)
+        console.print("[i]"+ "Created CSV File:  " + queryResults["tableName"] + ".csv" + "[/i]")
 
 def convertTime(time):
     seconds = time / 1000000-11644473600
