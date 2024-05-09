@@ -1,7 +1,8 @@
 import sqlite3
 import os
-from pathlib import Path
 import typer
+import csv
+from pathlib import Path
 from typing_extensions import Annotated
 from rich.console import Console
 from rich.table import Table, Column
@@ -47,101 +48,84 @@ def dbCleanup(con):
     con.close()
 
 
-def queryBuilder(connection, table, rows):
-    # The result of a "cursor.execute" can be iterated over by row
-    
-    #queryResults = connection.execute(f"SELECT id, current_path, DATETIME(ROUND(start_time / 1000000-11644473600), 'unixepoch', 'localtime') AS EventTime, referrer, site_url, tab_url, tab_referrer_url, mime_type, original_mime_type FROM {table} LIMIT {rows};")
-    queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
+def queryBuilder(connection, table, rows: int, verbose: bool):
+    if not verbose:
+        if table == "urls":
+            queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
+        elif table == "downloads":
+            queryResults = connection.execute(f"SELECT id, current_path, start_time, referrer, site_url, tab_url, tab_referrer_url FROM {table} LIMIT {rows};")
+    else:
+        queryResults = connection.execute(f"SELECT * FROM (SELECT * FROM {table} ORDER BY ID DESC LIMIT {rows}) ORDER BY ID ASC;")
+        
+    # iterate through table's column names
     columnNames = list(map(lambda x: x[0], connection.description))
-    #print(columnNames)
-    # for result in queryResults:
-    #     print(result)
-    #print(queryResults)
-
+    
     return {
         "columnNames": columnNames,
         "tableName": table,
         "queryResults": queryResults
         }
 
-def printOutput(queryResults: dict, minimal: bool):
+def printOutput(queryResults: dict, output: bool):
 
     resultsTable = None
-    columns = []
+    columns = queryResults["columnNames"]
+    timeColumns = []
 
-    if minimal:
-        if queryResults["tableName"] == "downloads":
-            resultsTable = Table(title="Downloads Table", show_lines=True)
-            columns = ["File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL"]
-        
-        elif queryResults["tableName"] == "urls":
-            resultsTable = Table(title="URLs Table", show_lines=True)
-            columns = ["URL", "Title", "Visit Count", "Typed Count", "Last Visit Time"]
+    # parse all columns that have time within it
+    for col in columns:
+        if "time" in col:
+            timeColumns.append(columns.index(col))
 
-    else:
-        if queryResults["tableName"] == "downloads":
-            resultsTable = Table(title="Downloads Table", show_lines=True)
-        elif queryResults["tableName"] == "urls":
-            resultsTable = Table(title="URLs Table", show_lines=True)
-        
-        columns = queryResults["columnNames"]
-
-        # if queryResults["tableName"] == "downloads":
-        #     resultsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type")
-        # elif queryResults["tableName"] == "urls":
-        #     resultsTable = Table("ID", "File Path", "Date", "Referrer", "Site URL", "Tab URL", "Tab Referrer URL", "mime_type", "original_mime_type")
+    if queryResults["tableName"] == "downloads":
+        resultsTable = Table(title="Downloads Table", show_lines=True)
     
-    for column in columns:
+    elif queryResults["tableName"] == "urls":
+        resultsTable = Table(title="URLs Table", show_lines=True)
+        
+    for column in queryResults["columnNames"]:
             # create columns
             resultsTable.add_column(column)
 
-    for result in queryResults["queryResults"]:
-        dataNormalized = None
-        
-        if queryResults["tableName"] == "downloads":
-            dataNormalized = {
-                "ID": str(result[0]),
-                "File_Path": str(result[2]),
-                "Date": str(convertTime(result[4])),
-                "Referrer": str(result[15]),
-                "Site_URL": str(result[16]),
-                "Tab_URL": str(result[17]),
-                "Tab_Referrer_URL": str(result[18])
-            }
+    normalizedResults = []
 
-        elif queryResults["tableName"] == "urls":
-            dataNormalized = {
-                "URL": str(result[1]),
-                "Title": str(result[2]),
-                "Visit_Count": str(result[3]),
-                "Typed_Count": str(result[4]),
-                "Last_Visit_Time": str(convertTime(result[5]))
-            }
+    for result in queryResults["queryResults"]:
+
+        # convert time to human format, temp way to do it
+        tmpList = list(result)
+        for timeCol in timeColumns:
+            tmpList[timeCol] = str(convertTime(result[timeCol]))
+
+        result = tuple(tmpList)
+        normalizedResults.append(result)
         
-        if minimal:
-            if queryResults["tableName"] == "downloads":
-                resultsTable.add_row(dataNormalized["File_Path"], dataNormalized["Date"], dataNormalized["Referrer"], dataNormalized["Site_URL"], dataNormalized["Tab_URL"], dataNormalized["Tab_Referrer_URL"])
-            elif queryResults["tableName"] == "urls":
-                resultsTable.add_row(dataNormalized["URL"], dataNormalized["Title"], dataNormalized["Visit_Count"], dataNormalized["Typed_Count"], dataNormalized["Last_Visit_Time"])
-        else:
-            #tuple unpack
-            resultsTable.add_row(*[str(item) for item in result])
+        #tuple unpack - creates column data
+        resultsTable.add_row(*[str(item) for item in result])
 
     if resultsTable.rows:
         console.print(resultsTable)
     else:
-        console.print("[i]No data for table...[/i]")
+        console.print(f"[i]No data for " + queryResults["tableName"] + " table...[/i]")
+
+    #will fix later, currently works
+    if output:
+        write_to_csv(queryResults["tableName"] + ".csv", queryResults["columnNames"], normalizedResults)
+        console.print("[i]"+ "Created CSV File:  " + queryResults["tableName"] + ".csv" + "[/i]")
 
 def convertTime(time):
     seconds = time / 1000000-11644473600
     converted = datetime.fromtimestamp(seconds)
     return converted.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
-    
+def write_to_csv(filename, columns, data):
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(columns)
+        writer.writerows(data)
 
 def main(
     all: Annotated[bool, typer.Option("--all", "-a", help="Show both URL and Download tables")] = False,
-    minimal: Annotated[bool, typer.Option("--minimal", "-min", help="Limit number of columns for cleaner visuals")] = True,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show verbose output from tables")] = False,
     rows: Annotated[int, typer.Option("--rows", "-r", min = 0, max=50, help="Limit number of rows that each table generates")] = 10,
     output: Annotated[bool, typer.Option("--output", "-o", help="Output table contents to a CSV (not implemented)")] = False,
     ):
@@ -158,11 +142,11 @@ def main(
 
     if all:
         for table in tables:
-            queryResults = queryBuilder(cursor, table, rows)
-            printOutput(queryResults, minimal)
+            queryResults = queryBuilder(cursor, table, rows, verbose)
+            printOutput(queryResults, output)
     else:
-        queryResults = queryBuilder(cursor, tables[0], rows)
-        printOutput(queryResults, minimal)
+        queryResults = queryBuilder(cursor, tables[0], rows, verbose)
+        printOutput(queryResults, output)
 
     
     dbCleanup(con)
