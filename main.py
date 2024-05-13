@@ -2,7 +2,9 @@ import sqlite3
 import os
 import typer
 import csv
+import json
 from pathlib import Path
+from dotenv import load_dotenv, set_key
 from typing_extensions import Annotated
 from rich.console import Console
 from rich.table import Table, Column
@@ -22,8 +24,41 @@ def printBanner():
 """
     print(banner)
 
-def getNewestFile():
-    directory_path = str(Path.home()) + "/Downloads"
+def getConfig(configPath: Path) -> dict:
+    if not configPath.exists():
+        console.log(f"Config not found, ensure {configPath} exists on the system")
+        return promptConfig()
+    else:
+        console.log(f"Loading config from: {configPath}")
+        with configPath.open("r") as f:
+            return json.load(f)
+
+def promptConfig():
+    config = {}
+    sqliteCustom = typer.confirm("Do you want a custom path for BSPY to search for .SQLITE files? Default: ~/Downloads")
+    if not sqliteCustom:
+        config = {
+        "SQLITE_DIR": str(Path.home() / "Downloads"),
+        "OUTPUT_DIR": str(Path.home() / "Downloads")
+    }
+        
+    else:
+        sqlitePath = typer.prompt("Enter SQLITE search directory for BSPY")
+        outputPath = typer.prompt("Enter CSV export directory for BSPY")
+
+        config["SQLITE_DIR"] = sqlitePath
+        config["OUTPUT_DIR"] = outputPath
+
+    writeConfig(config, Path(os.environ["BSPY_CONFIG"]))
+    return config
+
+def writeConfig(config: dict, configPath: Path):
+    with configPath.open("w") as f:
+        json.dump(config, f, indent=4)
+        console.log(f"Config created within {configPath}")
+
+def getNewestFile(sqliteDirectory: Path):
+    directory_path = sqliteDirectory
     most_recent_file = None
     most_recent_time = 0
 
@@ -37,7 +72,6 @@ def getNewestFile():
                 most_recent_time = mod_time
 
     return os.path.join(directory_path, most_recent_file)
-
 
 def dbConnection(database):
     con = sqlite3.connect(database)
@@ -110,7 +144,7 @@ def printOutput(queryResults: dict, output: bool):
     #will fix later, currently works
     if output:
         write_to_csv(queryResults["tableName"] + ".csv", queryResults["columnNames"], normalizedResults)
-        console.print("[i]"+ "Created CSV File:  " + queryResults["tableName"] + ".csv" + "[/i]")
+        console.print(f"Created {queryResults['tableName']}.csv within {config['OUTPUT_DIR']}")
 
 def convertTime(time):
     seconds = time / 1000000-11644473600
@@ -118,7 +152,7 @@ def convertTime(time):
     return converted.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
 def write_to_csv(filename, columns, data):
-    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+    with open(Path(config["OUTPUT_DIR"]).joinpath(filename), 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(columns)
         writer.writerows(data)
@@ -131,7 +165,11 @@ def main(
     ):
     
     printBanner()
-    databaseHistory = getNewestFile()
+    
+    load_dotenv()
+    global config 
+    config = getConfig(Path(os.environ["BSPY_CONFIG"]))
+    databaseHistory = getNewestFile(config["SQLITE_DIR"])
     
     cursor, con = dbConnection(databaseHistory)
     console.print(f"Reading file - {databaseHistory}", style="white on blue")
