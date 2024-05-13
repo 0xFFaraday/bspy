@@ -12,7 +12,7 @@ git clone https://github.com/0xFFaraday/bspy.git
 cd bspy && pip install -r requirements.txt
 
 # Create config reference for input & export of files
-echo "$PWD/config.json" > .env
+echo "BSPY_CONFIG=\"$PWD/config.json\"" > .env
 ```
 
 ## Usage 
