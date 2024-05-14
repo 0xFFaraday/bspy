@@ -12,7 +12,11 @@ git clone https://github.com/0xFFaraday/bspy.git
 cd bspy && pip install -r requirements.txt
 
 # Create config reference for input & export of files
+# Method 1: MacOS / Unix
 echo "BSPY_CONFIG=\"$PWD/config.json\"" > .env
+
+# Method 2: PowerShell - Not the best way but works!
+$config="BSPY_CONFIG=" + "`"$PWD\config.json`""; echo $config.Replace("\", "\\") | Set-Content .\.env -Encoding ASCII
 ```
 
 ## Usage 
